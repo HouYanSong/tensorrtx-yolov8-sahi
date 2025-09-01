@@ -124,31 +124,6 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    // 初始化cv::Rect对象：(x, y, width, height)
-    std::vector<std::vector<cv::Rect>> slice_boxes
-    {
-        {cv::Rect(0, 0, 640, 640)},
-        {cv::Rect(400, 0, 640, 640)},
-        {cv::Rect(800, 0, 640, 640)},
-        {cv::Rect(0, 440, 640, 640)},
-        {cv::Rect(400, 440, 640, 640)},
-        {cv::Rect(800, 440, 640, 640)},
-        {cv::Rect(400, 220, 640, 640)},
-        {cv::Rect(0, 0, 1440, 1080)},
-    };
-
-    std::vector <std::vector<float>> slice_box_lt
-    {
-        {0, 0},
-        {400, 0},
-        {800, 0},
-        {0, 440},
-        {400, 440},
-        {800, 440},
-        {400, 220},
-        {0, 0},
-    };
-
     // Deserialize the engine from file
     IRuntime *runtime = nullptr;
     ICudaEngine *engine = nullptr;
@@ -174,20 +149,53 @@ int main(int argc, char **argv) {
 
     prepare_buffer(engine, &device_buffers[0], &device_buffers[1], &output_buffer_host, &decode_ptr_host, &decode_ptr_device);
 
+    // 初始化cv::Rect对象：(x, y, width, height)
+    std::vector<std::vector<cv::Rect>> slice_boxes
+    {
+        {cv::Rect(0, 0, 640, 640)},
+        {cv::Rect(400, 0, 640, 640)},
+        {cv::Rect(800, 0, 640, 640)},
+        {cv::Rect(0, 440, 640, 640)},
+        {cv::Rect(400, 440, 640, 640)},
+        {cv::Rect(800, 440, 640, 640)},
+        {cv::Rect(400, 220, 640, 640)},
+        {cv::Rect(0, 0, 1440, 1080)},
+    };
+
+    std::vector <std::vector<float>> slice_box_lt
+    {
+        {0, 0},
+        {400, 0},
+        {800, 0},
+        {0, 440},
+        {400, 440},
+        {800, 440},
+        {400, 220},
+        {0, 0},
+    };
+
+    // 提前创建大图内存空间
+    cv::Mat large_image_buffer(1080, 1440, CV_8UC3, cv::Scalar(0, 0, 0));
+
+    // 提前创建切片视图（避免重复创建）
+    std::vector<cv::Mat> slice_views;
+    for (size_t i = 0; i < slice_boxes.size(); ++i) {
+        for (size_t j = 0; j < slice_boxes[i].size(); ++j) {
+            cv::Rect rect = slice_boxes[i][j];
+            slice_views.push_back(large_image_buffer(rect));
+        }
+    }
+
+    // 图片切分检测
     for (size_t i = 0; i < file_names.size(); ++i) {
-        cv::Mat image_resize;
-        std::vector<cv::Mat> img_batch;
-
         cv::Mat image = cv::imread(img_dir + "/" + file_names[i]);
-        cv::resize(image, image_resize, cv::Size(1440, 1080));
+        // 直接缩放到预分配的大图空间
+        cv::resize(image, large_image_buffer, cv::Size(1440, 1080));
 
-        // Image Slice
-        for (size_t i = 0; i < slice_boxes.size(); ++i) {
-            for (size_t j = 0; j < slice_boxes[i].size(); ++j) {
-                cv::Rect rect = slice_boxes[i][j];
-                cv::Mat img = image_resize(rect).clone();
-                img_batch.push_back(img);
-            }
+        // 直接使用预分配的视图，无需重新切分
+        std::vector<cv::Mat> img_batch;
+        for (const auto& view : slice_views) {
+            img_batch.push_back(view.clone());
         }
 
         // Start inference
@@ -206,9 +214,8 @@ int main(int argc, char **argv) {
         std::cout << file_names[i] << " YOLOv8-SAHI: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
 
         // Draw Boxes
-        draw_bbox_batch(image_resize, res);
-        cv::imwrite("_" + file_names[i], image_resize);
-
+        draw_bbox_batch(large_image_buffer, res);
+        cv::imwrite("_" + file_names[i], large_image_buffer);
     }
 
     // Release stream and buffers
