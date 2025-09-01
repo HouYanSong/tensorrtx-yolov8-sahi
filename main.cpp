@@ -193,7 +193,8 @@ int main(int argc, char **argv) {
     // 这样我们就可以直接使用img_batch，而不用重新创建了
     std::vector<cv::Mat> img_batch;
     for (const auto& view : slice_views) {
-        img_batch.push_back(view.clone());
+        // 无需传入view.clone,尝试操作原始内存
+        img_batch.push_back(view);
     }
 
     // 图片切分检测
