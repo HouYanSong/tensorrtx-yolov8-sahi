@@ -186,17 +186,27 @@ int main(int argc, char **argv) {
         }
     }
 
+    // 我们的操作是顺序执行的，所以这块内存操作的时候不会存在竞争问题
+    // 我们尝试直接创建img_batch输入，避免重复创建
+    // 然后将view小图的内存放入
+    // 当我们使用resize刷新large_image_buffer时，view小图的内存地址不会改变
+    // 这样我们就可以直接使用img_batch，而不用重新创建了
+    std::vector<cv::Mat> img_batch;
+    for (const auto& view : slice_views) {
+        img_batch.push_back(view.clone());
+    }
+
     // 图片切分检测
     for (size_t i = 0; i < file_names.size(); ++i) {
         cv::Mat image = cv::imread(img_dir + "/" + file_names[i]);
         // 直接缩放到预分配的大图空间
         cv::resize(image, large_image_buffer, cv::Size(1440, 1080));
 
-        // 直接使用预分配的视图，无需重新切分
-        std::vector<cv::Mat> img_batch;
-        for (const auto& view : slice_views) {
-            img_batch.push_back(view.clone());
-        }
+        // // 直接使用预分配的视图，无需重新切分
+        // std::vector<cv::Mat> img_batch;
+        // for (const auto& view : slice_views) {
+        //     img_batch.push_back(view.clone());
+        // }
 
         // Start inference
         auto start = std::chrono::system_clock::now();
