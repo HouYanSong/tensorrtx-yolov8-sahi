@@ -92,6 +92,9 @@ sample0230.png YOLOv8-SAHI: 45ms
 
 ### YOLOv8-SAHI-ByteTrack
 ```bash
+sudo apt install libeigen3-dev
+```
+```bash
 cd build
 ./yolov8_sahi_track ../media/c3_1080.mp4 
 ```
