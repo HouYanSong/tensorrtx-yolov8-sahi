@@ -191,23 +191,24 @@ int main(int argc, char **argv) {
     // 然后将view小图的内存放入
     // 当我们使用resize刷新large_image_buffer时，view小图的内存地址不会改变
     // 这样我们就可以直接使用img_batch，而不用重新创建了
-    std::vector<cv::Mat> img_batch;
-    for (const auto& view : slice_views) {
-        // 无需传入view.clone,尝试操作原始内存
-        img_batch.push_back(view);
-    }
+    // std::vector<cv::Mat> img_batch;
+    // for (const auto& view : slice_views) {
+    //     // 无需传入view.clone,尝试操作原始内存
+    //     img_batch.push_back(view);
+    // }
 
     // 图片切分检测
     for (size_t i = 0; i < file_names.size(); ++i) {
         cv::Mat image = cv::imread(img_dir + "/" + file_names[i]);
-        // 直接缩放到预分配的大图空间
+
+        // 当我们使用resize刷新large_image_buffer时，view小图的内存地址不会改变
         cv::resize(image, large_image_buffer, cv::Size(1440, 1080));
 
-        // // 直接使用预分配的视图，无需重新切分
-        // std::vector<cv::Mat> img_batch;
-        // for (const auto& view : slice_views) {
-        //     img_batch.push_back(view.clone());
-        // }
+        // 但由于切分图像与图像共享内存，图像批量预处理时作用于共享的原始图像数据，因此clone是有必要的！
+        std::vector<cv::Mat> img_batch;
+        for (const auto& view : slice_views) {
+            img_batch.push_back(view.clone());
+        }
 
         // Start inference
         auto start = std::chrono::system_clock::now();
