@@ -8,7 +8,6 @@ This project introduces how to implement high-performance deployment of YOLOv8-S
 
 ### YOLOv8 Int8 Quantization
 1. generate `yolov8s.wts` from pytorch with `yolov8s.pt`
-
 ```bash8
 pip install ultralytics
 python gen_wts.py
@@ -16,12 +15,16 @@ python gen_wts.py
 
 2. Export `yolov8s.engine` from `yolov8s.wts` with `kBatchSize = 8`
 ```bash
-rm -rf build
+sudo apt install libeigen3-dev
+```
+```bash
+rm -fr build
 cmake -S . -B build
 cmake --build build
 cd build
 ./yolov8_sahi -s ../weights/yolov8s.wts ../weights/yolov8s.engine s
 ```
+
 3. See more configs in `include/config.h`
 ```cpp
 #ifndef CONFIG_H
@@ -92,9 +95,6 @@ sample0230.png YOLOv8-SAHI: 45ms
 
 ### YOLOv8-SAHI-ByteTrack
 ```bash
-sudo apt install libeigen3-dev
-```
-```bash
 cd build
 ./yolov8_sahi_track ../media/c3_1080.mp4 
 ```
@@ -121,7 +121,7 @@ Processing frame 320 (14 fps)
 Processing frame 340 (15 fps)
 FPS: 15
 ```
-<video src="https://modelbox-course.obs.cn-north-4.myhuaweicloud.com/tensorrtx-yolov8-sahi/result.mp4" controls></video>
+![](https://modelbox-course.obs.cn-north-4.myhuaweicloud.com/tensorrtx-yolov8-sahi/result.gif)
 
 ### References
 
